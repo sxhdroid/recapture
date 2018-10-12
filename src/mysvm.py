@@ -66,7 +66,6 @@ def face_detect():
     while ret:
         faces = face_cascade.detectMultiScale(frame, 1.3, 5)  # 检测人脸
         for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             roiImg = frame[y:y + w, x:x + h]
             # gray = cv2.cvtColor(roiImg, cv2.COLOR_BGR2GRAY)  # 转化为灰度图
             feature = get_feature_by_img(roiImg, False)
@@ -76,6 +75,7 @@ def face_detect():
             #     num += 1
             cv2.putText(frame, '1' if label == 1 else '-1', (x, y), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale=1.5, color=(0, 255, 0), thickness=2)
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         cv2.imshow('frame', frame)
         ret, frame = camera.read()
         if cv2.waitKey(1) & 0xFF == ord('q'):
