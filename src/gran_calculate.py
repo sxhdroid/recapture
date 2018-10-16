@@ -39,25 +39,33 @@ def get_feature_by_img(img, isGray):
     mean, std = cv2.meanStdDev(dst)  # 计算均值和标准差
     var = std * std  # 方差
     # print(var)
-    # 计算原图g通道梯度直方图特征
-    hist_g = cv2.calcHist([dst], [1], None, [32], [0, 256])  # 获取g通道梯度直方图特征
+    f_size = 8
     if isGray:
+        # 计算梯度直方图特征
+        hist_g = cv2.calcHist([dst], [0], None, [f_size], [0, 256])  # 梯度直方图特征
         list_features = np.concatenate((hist_g, mean, var))
     else:
+        # 计算原图g通道梯度直方图特征
+        hist_g = cv2.calcHist([dst], [1], None, [f_size], [0, 256])  # 获取g通道梯度直方图特征
         # 计算灰度图均值、方差、直方图
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 转换为灰度图
         gray_mean, gray_std = cv2.meanStdDev(gray)
         gray_var = gray_std * gray_std
-        gray_hist = cv2.calcHist([gray], [0], None, [32], [0, 256])
+        gray_hist = cv2.calcHist([gray], [0], None, [f_size], [0, 256])
         list_features = np.concatenate((hist_g, mean, var, gray_hist, gray_mean, gray_var))
 
     min_value = np.min(list_features)  # 最大值
     max_value = np.max(list_features)  # 最小值
+    mean_value = np.mean(list_features)  # 平均值
+    std_value = np.std(list_features)  # 标准差
+    lower = -1
+    upper =  1
 
     # 构建特征字典索引
     features = {}
     for k, v in enumerate(list_features):
-        features.setdefault(k + 1, float(v[0] - min_value)/(max_value - min_value))  # 归一化的value
+        features.setdefault(k + 1, float(lower + upper * (v[0] - min_value)/(max_value - min_value)))  # libsvm默认缩放规则归一化的value
+        # features.setdefault(k + 1, float(v[0] - mean_value)/std_value)  # 标准化的value
     return features
 
 
