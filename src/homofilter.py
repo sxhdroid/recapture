@@ -66,7 +66,7 @@ def homo(img, high, low, c):
     ImageOut = np.zeros(v.shape, dtype=np.uint8)
     for Y in range(Height):
         for X in range(Width):
-            ImageOut[Y, X] = int(255 * (Out[Y, X] - Min) / Range)
+            ImageOut[Y, X] = np.uint8(255 * (Out[Y, X] - Min) / Range)
     HSV = cv2.merge([h, s, ImageOut])
     outimg = cv2.cvtColor(HSV, cv2.COLOR_HSV2BGR)
     end = time.time()
