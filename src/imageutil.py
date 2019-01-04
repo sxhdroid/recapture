@@ -23,6 +23,9 @@ __mtime__ = '2018/10/12'
 import cv2
 import numpy as np
 import os
+import time
+from matplotlib import pyplot as plt
+from skimage.feature import hog
 
 
 def face_detect():
@@ -51,7 +54,7 @@ def face_detect():
     cv2.destroyAllWindows()
 
 
-def resize(path, dst=None):
+def resize(path, dst=None, size=(128, 128)):
     import os
     import numpy as np
     from os.path import join
@@ -59,7 +62,7 @@ def resize(path, dst=None):
         # 读入图片文件
         img = cv2.imdecode(np.fromfile(join(path, img_name), dtype=np.uint8), cv2.IMREAD_UNCHANGED)
         try:
-            resize_img = cv2.resize(img, (100, 100))
+            resize_img = cv2.resize(img, (size[0], size[1]))
             if dst is None:
                 cv2.imwrite(join(path, img_name), resize_img)
             else:
@@ -145,8 +148,111 @@ def cap_face():
             cv2.imwrite(os.path.join(outdir, img), resize_img)
 
 
+# # sobel算子的实现
+def sobel(img):
+    # 计算原图的表面梯度
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    x = cv2.Sobel(img, cv2.CV_16S, 1, 0)
+    y = cv2.Sobel(img, cv2.CV_16S, 0, 1)
+    absX = cv2.convertScaleAbs(x)  # 转回uint8
+    absY = cv2.convertScaleAbs(y)
+    dst = cv2.addWeighted(absX, 0.5, absY, 0.5, 0)
+    return dst
+
+
+def direction_of_8_sobel(img):
+    start = time.time()
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    (height, width) = img.shape
+    new_image = np.zeros(img.shape, dtype=np.uint8)
+    kernel_0 = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+    kernel_45 = np.array([[2, 1, 0], [1, 0, -1], [0, -1, -2]])
+    kernel_90 = np.array([[1, 0, -1], [-2, 0, 2], [1, 0, -1]])
+    kernel_135 = np.array([[0, -1, -2], [1, 0, -1], [2, 1, 0]])
+    kernel_180 = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]])
+    kernel_225 = np.array([[-2, -1, 0], [-1, 0, 1], [0, 1, 2]])
+    kernel_270 = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
+    kernel_315 = np.array([[0, 1, 2], [-1, 0, 1], [-2, -1, 0]])
+
+    # max_kernel[7] = abs(np.sum(img[i:i + 3, j:j + 3] * kernel_315))
+
+    dst_0 = cv2.filter2D(img, -1, kernel_0)
+    dst_45 = cv2.filter2D(img, -1, kernel_45)
+    dst_90 = cv2.filter2D(img, -1, kernel_90)
+    dst_135 = cv2.filter2D(img, -1, kernel_135)
+    dst_180 = cv2.filter2D(img, -1, kernel_180)
+    dst_225 = cv2.filter2D(img, -1, kernel_225)
+    dst_270 = cv2.filter2D(img, -1, kernel_270)
+    dst_315 = cv2.filter2D(img, -1, kernel_315)
+    step1 = time.time()
+    print("step1:%f" % (start - step1))
+    max_kernel = np.zeros((1, 8), dtype=np.uint8)
+    for i in range(height):
+        for j in range(width):
+            max_kernel[0, 0] = dst_0[j, i]
+            max_kernel[0, 1] = dst_45[j, i]
+            max_kernel[0, 2] = dst_90[j, i]
+            max_kernel[0, 3] = dst_135[j, i]
+            max_kernel[0, 4] = dst_180[j, i]
+            max_kernel[0, 5] = dst_225[j, i]
+            max_kernel[0, 6] = dst_270[j, i]
+            max_kernel[0, 7] = dst_315[j, i]
+            new_image[j, i] = np.max(max_kernel)
+    print("step2:%f" % (time.time()-step1, ))
+    # cv2.imshow('8', np.hstack((img, dst_0, dst_45, dst_90, dst_135, dst_180, dst_225, dst_270, dst_315, new_image)))
+    # cv2.waitKey(0)
+    return new_image
+
+
+def sobel_8_or(img, fname='edge'):
+    # 自己进行垂直边缘提取
+    kernel = np.array([[-1, 0, 1],
+                       [-2, 0, 2],
+                       [-1, 0, 1]], dtype=np.float32)
+    dst_v = cv2.filter2D(img, -1, kernel)
+    # 自己进行水平边缘提取
+    dst_h = cv2.filter2D(img, -1, kernel.T)
+    dst = np.where(dst_v > dst_h, dst_v, dst_h)
+    # 横向并排对比显示
+    cv2.imshow(fname, np.hstack((img, dst_v, dst_h, dst)))
+    cv2.waitKey(0)
+
+
 if __name__ == "__main__":
     # face_detect()
     # rotate(90)
-    # resize('../rotate', '../scale_img')
-    cap_face()
+    # resize('../recap', '../recap')
+    # cap_face()
+    # 计算原图的表面梯度
+    img = cv2.imread('../orig/1539745319614.bmp', cv2.IMREAD_UNCHANGED)
+    direction_of_8_sobel(img)
+    # cv2.imshow('normal', np.sqrt(img/float(np.max(img))))
+    # sobel(img)
+    sobel_8_or(img)
+    # cv2.imshow('sss', direction_of_8_sobel(img))
+    # dst1 = sobel(img)
+    # hist1 = cv2.calcHist([dst1], [0], None, [256], [0, 256])
+    # plt.hist(hist1, facecolor='black')
+    # cv2.imshow('1', dst1)
+    #
+    # from src import homofilter
+    # homo_dst = homofilter.homo(img, 2, 0.2, 0.1)
+    # sobel_8_or(homo_dst, '111')
+    # start = time.time()
+    # dst2 = kernelction_of_8_sobel(homo_dst)
+    # print(time.time()-start)
+    # plt.hist(cv2.calcHist([dst2], [0], None, [256], [0, 256]))
+    # cv2.imshow('2', dst2)
+    # plt.show()
+
+    # x = cv2.Sobel(img, cv2.CV_16S, 1, 0)
+    # y = cv2.Sobel(img, cv2.CV_16S, 0, 1)
+    # absX = cv2.convertScaleAbs(x)  # 转回uint8
+    # absY = cv2.convertScaleAbs(y)
+    # dst = cv2.addWeighted(absX, 0.5, absY, 0.5, 0)
+    #
+    # cv2.imshow('dst', dst)
+    # cv2.waitKey(0)
+
+    # fd = hog(img, orientations=8, pixels_per_cell=(32, 32), cells_per_block=(4, 4))
+    # print(len(fd))
