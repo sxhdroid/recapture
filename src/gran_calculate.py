@@ -22,6 +22,20 @@ __mtime__ = '2018/9/12'
 """
 import cv2
 import numpy as np
+from src.imageutil import direction_of_8_sobel
+from src.homofilter import homo
+from src.imageutil import sobel
+from skimage.feature import hog
+
+
+def gethog(img):
+    img = np.sqrt(img / float(np.max(img)))
+    height, width = img.shape
+    gradient_values_x = cv2.Sobel(img, cv2.CV_64F, 1, 0, ksize=5)
+    gradient_values_y = cv2.Sobel(img, cv2.CV_64F, 0, 1, ksize=5)
+    gradient_magnitude = cv2.addWeighted(gradient_values_x, 0.5, gradient_values_y, 0.5, 0)
+    gradient_angle = cv2.phase(gradient_values_x, gradient_values_y, angleInDegrees=True)
+    print(gradient_magnitude.shape, gradient_angle.shape)
 
 
 def get_feature_by_img(img, isGray):
@@ -29,12 +43,10 @@ def get_feature_by_img(img, isGray):
     :param img 读入的图片
     :param isGray 是否是灰度图
     """
+    img = homo(img, 2, 0.2, 0.1)
     # 计算原图的表面梯度
-    x = cv2.Sobel(img, cv2.CV_16S, 1, 0)
-    y = cv2.Sobel(img, cv2.CV_16S, 0, 1)
-    absX = cv2.convertScaleAbs(x)  # 转回uint8
-    absY = cv2.convertScaleAbs(y)
-    dst = cv2.addWeighted(absX, 0.5, absY, 0.5, 0)
+    # dst = sobel(img)
+    dst = direction_of_8_sobel(img)
     # 计算原图的均值、方差
     mean, std = cv2.meanStdDev(dst)  # 计算均值和标准差
     var = std * std  # 方差
@@ -42,11 +54,15 @@ def get_feature_by_img(img, isGray):
     f_size = 8
     if isGray:
         # 计算梯度直方图特征
-        hist_g = cv2.calcHist([dst], [0], None, [f_size], [0, 256])  # 梯度直方图特征
+        hist_g = cv2.calcHist([img], [0], None, [f_size], [0, 256])  # 梯度直方图特征
         list_features = np.concatenate((hist_g, mean, var))
     else:
-        # 计算原图g通道梯度直方图特征
-        hist_g = cv2.calcHist([dst], [1], None, [f_size], [0, 256])  # 获取g通道梯度直方图特征
+        # 计算原图各通道梯度直方图特征
+        # b, g, r = cv2.split(img)
+        # hist_b = cv2.calcHist([b], [0], None, [f_size], [0, 256])  # 获取b通道梯度直方图特征
+        hist_g = cv2.calcHist([dst], [0], None, [f_size], [0, 256])  # 获取g通道梯度直方图特征
+        # hist_r = cv2.calcHist([r], [0], None, [f_size], [0, 256])  # 获取r通道梯度直方图特征
+
         # 计算灰度图均值、方差、直方图
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 转换为灰度图
         gray_mean, gray_std = cv2.meanStdDev(gray)
@@ -66,6 +82,25 @@ def get_feature_by_img(img, isGray):
     for k, v in enumerate(list_features):
         features.setdefault(k + 1, float(lower + upper * (v[0] - min_value)/(max_value - min_value)))  # libsvm默认缩放规则归一化的value
         # features.setdefault(k + 1, float(v[0] - mean_value)/std_value)  # 标准化的value
+    return features
+
+
+def get_hog(img):
+    list_features = hog(img, orientations=8, pixels_per_cell=(32, 32), cells_per_block=(4, 4), block_norm='L2-Hys')
+    # min_value = np.min(list_features)  # 最大值
+    # max_value = np.max(list_features)  # 最小值
+    # mean_value = np.mean(list_features)  # 平均值
+    # std_value = np.std(list_features)  # 标准差
+    lower = -1
+    upper =  1
+
+    # 构建特征字典索引
+    features = {}
+    k = 0
+    for v in list_features:
+        features.setdefault(k + 1, v)  # libsvm默认缩放规则归一化的value
+        # features.setdefault(k + 1, float(v[0] - mean_value)/std_value)  # 标准化的value
+        k += 1
     return features
 
 
@@ -91,7 +126,7 @@ def process_train_data(isPos, isGray, fname):
     title = features_pieces[0].keys()
     body = [[str(d[t]) if t == 0 else str(t) + ':' + str(d[t]) for t in title] for d in features_pieces]
     s = '\n'.join(['\t'.join([word for word in line]) for line in body])
-    with open(fname, 'a') as outfile:
+    with open(fname, 'w') as outfile:
         outfile.write(s)
 
 
