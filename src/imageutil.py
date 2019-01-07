@@ -76,6 +76,32 @@ def resize(path, dst=None, size=(128, 128)):
     # cv2.destroyAllWindows()
 
 
+def detect_face_and_resize(path, dst=None, size=(128, 128)):
+    import os
+    import numpy as np
+    from os.path import join
+
+    # 加载人脸检测过滤器
+    face_cascade = cv2.CascadeClassifier('./haarcascade_frontalface_default.xml')
+
+    for img_name in os.listdir(path):
+        # 读入图片文件
+        img = cv2.imdecode(np.fromfile(join(path, img_name), dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+        faces = face_cascade.detectMultiScale(img, 1.3, 5)  # 检测人脸
+        print('%s faces is %d' % (img_name, len(faces)))
+        for (x, y, w, h) in faces:
+            roiImg = img[y:y + w, x:x + h]
+            try:
+                resize_img = cv2.resize(roiImg, (size[0], size[1]))
+                if dst is None:
+                    cv2.imwrite(join(path, img_name), resize_img)
+                else:
+                    cv2.imwrite(join(dst, img_name), resize_img)
+            except Exception as e:
+                print(e)
+                continue
+
+
 def rotate_bound(image, angle):
     # grab the dimensions of the image and then determine the
     # center
@@ -161,10 +187,10 @@ def sobel(img):
 
 
 def direction_of_8_sobel(img):
-    start = time.time()
+    # start = time.time()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     (height, width) = img.shape
-    new_image = np.zeros(img.shape, dtype=np.uint8)
+    # new_image = np.zeros(img.shape, dtype=np.uint8)
     kernel_0 = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
     kernel_45 = np.array([[2, 1, 0], [1, 0, -1], [0, -1, -2]])
     kernel_90 = np.array([[1, 0, -1], [-2, 0, 2], [1, 0, -1]])
@@ -184,51 +210,35 @@ def direction_of_8_sobel(img):
     dst_225 = cv2.filter2D(img, -1, kernel_225)
     dst_270 = cv2.filter2D(img, -1, kernel_270)
     dst_315 = cv2.filter2D(img, -1, kernel_315)
-    step1 = time.time()
-    print("step1:%f" % (start - step1))
-    max_kernel = np.zeros((1, 8), dtype=np.uint8)
-    for i in range(height):
-        for j in range(width):
-            max_kernel[0, 0] = dst_0[j, i]
-            max_kernel[0, 1] = dst_45[j, i]
-            max_kernel[0, 2] = dst_90[j, i]
-            max_kernel[0, 3] = dst_135[j, i]
-            max_kernel[0, 4] = dst_180[j, i]
-            max_kernel[0, 5] = dst_225[j, i]
-            max_kernel[0, 6] = dst_270[j, i]
-            max_kernel[0, 7] = dst_315[j, i]
-            new_image[j, i] = np.max(max_kernel)
-    print("step2:%f" % (time.time()-step1, ))
+
+    all_values = np.array([dst_0.flatten(), dst_45.flatten(), dst_90.flatten(), dst_135.flatten()
+                              , dst_180.flatten(), dst_225.flatten(), dst_270.flatten(), dst_315.flatten()])
+    max_values_index = all_values.argmax(axis=0)  # 每列最大数索引
+    max_value = [0] * len(max_values_index)
+    j = 0
+    for i in max_values_index:  # 每列最大值索引
+        max_value[j] = all_values[i][j]
+        j += 1
+    new_image = np.reshape(max_value, newshape=(height, width))  # 转换为图片数值矩阵
+    # step1 = time.time()
+    # print("step1:%f" % (start - step1))
     # cv2.imshow('8', np.hstack((img, dst_0, dst_45, dst_90, dst_135, dst_180, dst_225, dst_270, dst_315, new_image)))
     # cv2.waitKey(0)
     return new_image
 
 
-def sobel_8_or(img, fname='edge'):
-    # 自己进行垂直边缘提取
-    kernel = np.array([[-1, 0, 1],
-                       [-2, 0, 2],
-                       [-1, 0, 1]], dtype=np.float32)
-    dst_v = cv2.filter2D(img, -1, kernel)
-    # 自己进行水平边缘提取
-    dst_h = cv2.filter2D(img, -1, kernel.T)
-    dst = np.where(dst_v > dst_h, dst_v, dst_h)
-    # 横向并排对比显示
-    cv2.imshow(fname, np.hstack((img, dst_v, dst_h, dst)))
-    cv2.waitKey(0)
-
-
 if __name__ == "__main__":
     # face_detect()
     # rotate(90)
-    # resize('../recap', '../recap')
+    # resize('../orig', '../orig')
+    # detect_face_and_resize('../orig', '../orig')
     # cap_face()
     # 计算原图的表面梯度
-    img = cv2.imread('../orig/1539745319614.bmp', cv2.IMREAD_UNCHANGED)
+    img = cv2.imread('../orig/0001_00_00_01_12.jpg', cv2.IMREAD_UNCHANGED)
     direction_of_8_sobel(img)
     # cv2.imshow('normal', np.sqrt(img/float(np.max(img))))
     # sobel(img)
-    sobel_8_or(img)
+    # sobel_8_or(img)
     # cv2.imshow('sss', direction_of_8_sobel(img))
     # dst1 = sobel(img)
     # hist1 = cv2.calcHist([dst1], [0], None, [256], [0, 256])
