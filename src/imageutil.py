@@ -186,6 +186,15 @@ def sobel(img):
     return dst
 
 
+def cart2polar(img):
+    # 计算原图的表面梯度
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    x = cv2.Sobel(img, cv2.CV_32F, 1, 0)
+    y = cv2.Sobel(img, cv2.CV_32F, 0, 1)
+    magnitude, angle = cv2.cartToPolar(x, y, angleInDegrees=True)
+    return magnitude, angle
+
+
 def direction_of_8_sobel(img):
     # start = time.time()
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -235,7 +244,8 @@ if __name__ == "__main__":
     # cap_face()
     # 计算原图的表面梯度
     img = cv2.imread('../orig/0001_00_00_01_12.jpg', cv2.IMREAD_UNCHANGED)
-    direction_of_8_sobel(img)
+    # direction_of_8_sobel(img)
+    cart2polar(img)
     # cv2.imshow('normal', np.sqrt(img/float(np.max(img))))
     # sobel(img)
     # sobel_8_or(img)

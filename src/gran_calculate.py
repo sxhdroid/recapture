@@ -24,7 +24,7 @@ import cv2
 import numpy as np
 from src.imageutil import direction_of_8_sobel
 from src.homofilter import homo
-from src.imageutil import sobel
+from src.imageutil import sobel, cart2polar
 from skimage.feature import hog
 
 
@@ -43,32 +43,35 @@ def get_feature_by_img(img, isGray):
     :param img 读入的图片
     :param isGray 是否是灰度图
     """
-    img = homo(img, 2, 0.2, 0.1)
+    # img = homo(img, 2, 0.2, 0.1)
     # 计算原图的表面梯度
     # dst = sobel(img)
-    dst = direction_of_8_sobel(img)
+    # dst = direction_of_8_sobel(img)
+    dst, angle = cart2polar(img)
     # 计算原图的均值、方差
     mean, std = cv2.meanStdDev(dst)  # 计算均值和标准差
     var = std * std  # 方差
+    hist_angle = cv2.calcHist([angle], [0], None, [128], [0, 256])  # 梯度方向直方图特征
+    list_features = np.concatenate((hist_angle, mean, var))
     # print(var)
-    f_size = 8
-    if isGray:
-        # 计算梯度直方图特征
-        hist_g = cv2.calcHist([img], [0], None, [f_size], [0, 256])  # 梯度直方图特征
-        list_features = np.concatenate((hist_g, mean, var))
-    else:
+    f_size = 128
+    # if isGray:
+    #     # 计算梯度直方图特征
+    #     hist_g = cv2.calcHist([img], [0], None, [f_size], [0, 256])  # 梯度直方图特征
+    #     list_features = np.concatenate((hist_g, mean, var))
+    # else:
         # 计算原图各通道梯度直方图特征
         # b, g, r = cv2.split(img)
         # hist_b = cv2.calcHist([b], [0], None, [f_size], [0, 256])  # 获取b通道梯度直方图特征
-        hist_g = cv2.calcHist([dst], [0], None, [f_size], [0, 256])  # 获取g通道梯度直方图特征
+        # hist_g = cv2.calcHist([dst], [0], None, [f_size], [0, 256])  # 获取g通道梯度直方图特征
         # hist_r = cv2.calcHist([r], [0], None, [f_size], [0, 256])  # 获取r通道梯度直方图特征
 
         # 计算灰度图均值、方差、直方图
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 转换为灰度图
-        gray_mean, gray_std = cv2.meanStdDev(gray)
-        gray_var = gray_std * gray_std
-        gray_hist = cv2.calcHist([gray], [0], None, [f_size], [0, 256])
-        list_features = np.concatenate((hist_g, mean, var, gray_hist, gray_mean, gray_var))
+        # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)  # 转换为灰度图
+        # gray_mean, gray_std = cv2.meanStdDev(gray)
+        # gray_var = gray_std * gray_std
+        # gray_hist = cv2.calcHist([gray], [0], None, [f_size], [0, 256])
+        # list_features = np.concatenate((hist_g, mean, var, gray_hist, gray_mean, gray_var))
 
     min_value = np.min(list_features)  # 最大值
     max_value = np.max(list_features)  # 最小值

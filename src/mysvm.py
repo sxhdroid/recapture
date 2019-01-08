@@ -28,23 +28,25 @@ import time
 
 
 def train():
-    y_pos, x_pos = svm_read_problem('positive.txt')
-    y_neg, x_neg = svm_read_problem('negative.txt')
-    y_pos_t_len = int(len(y_pos) * 0.85)
-    y_neg_t_len = int(len(y_neg) * 0.85)
-    x_pos_t_len = int(len(x_pos) * 0.85)
-    x_neg_t_len = int(len(x_neg) * 0.85)
+    # y_neg, x_neg = svm_read_problem('negative.txt')
+    # y_pos, x_pos = svm_read_problem('positive.txt')
+    # y_pos_t_len = int(len(y_pos) * 0.85)
+    # y_neg_t_len = int(len(y_neg) * 0.85)
+    # x_pos_t_len = int(len(x_pos) * 0.85)
+    # x_neg_t_len = int(len(x_neg) * 0.85)
+    #
+    # y_train = y_pos[: y_pos_t_len] + y_neg[: y_neg_t_len]  # 训练集
+    # x_train = x_pos[: x_pos_t_len] + x_neg[: x_neg_t_len]  # 训练集
+    #
+    # y_predict = y_pos[y_pos_t_len:] + y_neg[y_neg_t_len:]  # 预测集
+    # x_predict = x_pos[x_pos_t_len:] + x_neg[x_neg_t_len:]  # 预测集
 
-    y_train = y_pos[: y_pos_t_len] + y_neg[: y_neg_t_len]  # 训练集
-    x_train = x_pos[: x_pos_t_len] + x_neg[: x_neg_t_len]  # 训练集
-
-    y_predict = y_pos[y_pos_t_len:] + y_neg[y_neg_t_len:]  # 预测集
-    x_predict = x_pos[x_pos_t_len:] + x_neg[x_neg_t_len:]  # 预测集
-
+    y, x = svm_read_problem('dataset.txt')
     # model = svm_train(y_train[:], x_train[:], '-c 5')
-    model = svm_train(y_train[:], x_train[:], '-c 2 -g 0.5')
+    # model = svm_train(y_train[:], x_train[:], '-c 512 -g 16')
+    model = svm_train(y, x, '-c 512 -g 8')
     svm_save_model('recap.md', model)
-    p_label, p_acc, p_val = svm_predict(y_predict[:], x_predict[:], model)
+    # p_label, p_acc, p_val = svm_predict(y_predict[:], x_predict[:], model)
     # print(p_label)
     # print(p_acc)
     # print(p_val)
@@ -119,6 +121,6 @@ def face_detect_by_video(videopath):
 
 
 if __name__ == '__main__':
-    # train()
+    train()
     face_detect_by_video('../video/1539829110352078.mp4')
     # face_detect()
